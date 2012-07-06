@@ -92,6 +92,10 @@ all:
     default_on: true
     pretty_english_dates: true
 
+    # Load the latest asset file generation stamp from a separate file, if present.
+    # This works in concert with apostrophe:deploy to make clearing the browser cache
+    # a thing of the past in production
+    <?php if (file_exists(dirname(__FILE__) . '/asset_generation.yml')) require dirname(__FILE__) . '/asset_generation.yml' ?>
 
     ### Apostrophe Credit Message
     credit: true                      # Give Apostrophe Credit "Built with Apostrophe"
