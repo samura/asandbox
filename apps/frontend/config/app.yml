@@ -92,6 +92,12 @@ all:
     default_on: true
     pretty_english_dates: true
 
+    # Allow the user to override the title tag via page settings when it is 
+    # desirable to distinguish it from the navigation title for SEO purposes.
+    # Sometimes a suitable title tag for SEO is too long to be the label
+    # of a tab, etc.
+    metaTitle: true
+
     # Load the latest asset file generation stamp from a separate file, if present.
     # This works in concert with apostrophe:deploy to make clearing the browser cache
     # a thing of the past in production

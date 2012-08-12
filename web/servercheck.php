@@ -87,7 +87,7 @@ check(function_exists('posix_isatty'), 'Checking that the posix_isatty() is avai
 check(!ini_get('magic_quotes_gpc'), 'Checking that php.ini has magic_quotes_gpc set to off', 'Set magic_quotes_gpc to off in php.ini', false);
 check(!ini_get('register_globals'), 'Checking that php.ini has register_globals set to off', 'Set register_globals to off in php.ini', false);
 check(!ini_get('session.auto_start'), 'Checking that php.ini has session.auto_start set to off', 'Set session.auto_start to off in php.ini', false);
-
+check(ini_get('allow_url_fopen'), 'Checking that allow_url_fopen is set to 1', 'Set allow_url_fopen to 1 in php.ini', true);
 echo_title('Graphics conversion utility checks (may fail if your install dir is nonstandard)');
 
 check(strlen(`which pnmtopng`), 'Checking that netpbm is installed for lower-overhead image conversion', 'Install the netpbm utilities', false);

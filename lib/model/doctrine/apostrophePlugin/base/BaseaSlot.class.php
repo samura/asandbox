@@ -189,6 +189,10 @@ abstract class BaseaSlot extends sfDoctrineRecord
              array(
               'type' => 'aBetterTwitter',
              ),
+             'aEcwidProductSlot' => 
+             array(
+              'type' => 'aEcwidProduct',
+             ),
              'aPeopleSlot' => 
              array(
               'type' => 'People',
