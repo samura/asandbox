@@ -520,16 +520,75 @@ $(document).ready(function() {
             closeEmbed($target);
           });
 
-          function openEmbed(box) {
+          var openEmbed = function(box) {
             box.removeClass('embed-closed').addClass('embed-open');
-          }
+          };
 
-          function closeEmbed(box) {
+          var closeEmbed = function(box) {
             box.removeClass('embed-open').addClass('embed-closed');
-          }
+          };
 
         };
 
+        apostrophe.batchEditMedia = function() {
+          var selectionList  = $('#a-media-selection-list');
+          var batchForm         = $('#a-media-edit-multiple-form');
+
+          var initialize = function() {
+
+            reset();
+          };
+
+          var reset = function() {
+            // get all of the currently selected items
+            var items = getSelectedItems();
+            // show or hide the form (hidden if 0)
+            showBatchForm(items);
+            // create the array of media items
+            createItemArray(items, function(data){
+              // then update the form
+              updateBatchFormValues(data);
+            });
+          };
+
+          var getSelectedItems = function() {
+            // return the items that have been selected to this point
+            var items = selectionList.find('.a-media-selection-list-item');
+            return items;
+          };
+
+          var createItemArray = function(items, callback) {
+            // Create the array of media item ID's that will
+            // be sent to the form
+            var mediaSelection = [];
+            _.each(items, function(item) {
+              var itemId = $(item).data('id');
+              mediaSelection.push(itemId);
+            });
+            callback(mediaSelection);
+          };
+
+          var updateBatchFormValues = function(itemArray) {
+            // Update a hidden form element with the ID's of the
+            // media items that will be changed
+            var arrayInput = batchForm.find('input#a_media_item_item_ids');
+            arrayInput.val(itemArray);
+          };
+
+          var showBatchForm = function(items) {
+            // hide and show the form if items have been selected or not
+            if (items.length === 0) {
+              batchForm.hide();
+            } else {
+              batchForm.show();
+            }
+          };
+
+          selectionList.on('change.aMedia', function(event) {
+            reset();
+          });
+
+          initialize();
+        };
     }
 });
-

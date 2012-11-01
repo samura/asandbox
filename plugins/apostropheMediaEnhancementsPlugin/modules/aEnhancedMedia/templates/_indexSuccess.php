@@ -12,6 +12,7 @@
 <?php $type = aMediaTools::getAttribute('type') ?>
 <?php $selecting = aMediaTools::isSelecting() ?>
 <?php $multipleStyle = (($type === 'image') || (aMediaTools::isMultiple())) ?>
+<?php $editMultiple = aMediaTools::getAttribute('editMultiple', null) ?>
 
 <?php $body_class = 'a-media a-media-index'?>
 <?php $body_class .= ($page->admin) ? ' aMediaAdmin':'' ?>
@@ -21,17 +22,19 @@
 <?php slot('body_class', $body_class) ?>
 
 <?php slot('a-page-header') ?>
-  <?php include_partial('aEnhancedMedia/mediaHeader', array('uploadAllowed' => $uploadAllowed, 'embedAllowed' => $embedAllowed)) ?>
+  <?php include_partial('aEnhancedMedia/mediaHeader', array('uploadAllowed' => $uploadAllowed, 'embedAllowed' => $embedAllowed, 'pager' => $pager )) ?>
 <?php end_slot() ?>
 
 <?php slot('a-media-library-controls') ?>
-  <?php include_partial('aMedia/pager', array('pager' => $pager, 'pagerUrl' => $pagerUrl, 'max_per_page' => $max_per_page, 'enabled_layouts' => $enabled_layouts, 'layout' => $layout)) ?>
+  <?php include_partial('aEnhancedMedia/pager', array('pager' => $pager, 'pagerUrl' => $pagerUrl, 'max_per_page' => $max_per_page, 'enabled_layouts' => $enabled_layouts, 'layout' => $layout)) ?>
 <?php end_slot() ?>
 
 <div class="a-media-library clearfix">
 
+  <?php // This is the enhanced form ?>
   <?php include_partial('aEnhancedMedia/addForm', array('uploadAllowed' => $uploadAllowed, 'embedAllowed' => $embedAllowed)) ?>
 
+  <?php // This is the old form. This should be used for IE ?>
   <?php if ($uploadAllowed): ?>
     <?php include_partial('aEnhancedMedia/uploadMultipleWrapper', array('form' => new aMediaUploadMultipleForm())) ?>
   <?php endif ?>
@@ -39,7 +42,9 @@
   <?php if (aMediaTools::isSelecting() || aMediaTools::userHasUploadPrivilege()): ?>
       <?php if (aMediaTools::isSelecting()): ?>
         <div class="a-media-selection">
-          <?php if ($multipleStyle): ?>
+          <?php if ($multipleStyle && $editMultiple): ?>
+            <?php include_component('aEnhancedMedia', 'editMultiple', array('limitSizes' => $limitSizes, 'label' => (isset($label)?$label:null))) ?>
+          <?php elseif ($multipleStyle): ?>
             <?php include_component('aMedia', 'selectMultiple', array('limitSizes' => $limitSizes, 'label' => (isset($label)?$label:null))) ?>
           <?php else: ?>
             <?php include_component('aMedia', 'selectSingle', array('limitSizes' => $limitSizes, 'label' => (isset($label)?$label:null))) ?>

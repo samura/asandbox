@@ -28,7 +28,7 @@ class BaseaInsetAreaSlotComponents extends aSlotComponents
     if (!isset($this->form))
     {
       $this->form = new aInsetAreaSlotForm($this->id, $this->options);
-      $data = $this->slot->getValue('value');
+      $data = $this->slot->getValue();
       if (isset($data))
       {
         $this->form->setDefault('value', $data);
@@ -40,10 +40,11 @@ class BaseaInsetAreaSlotComponents extends aSlotComponents
   {
     $this->setup();
 		$this->setupOptions();
-    $data = $this->slot->getValue('value');
+    $data = $this->slot->getValue();
     if ($this->options['value'])
     {
-			if (isset($data['value'])) {
+			if (strlen($data))
+      {
       	$this->options['value'] = $data;
 			}
 			else

@@ -138,6 +138,10 @@ class aImporter
               $slotInfos = array_merge($slotInfos, $slotImport);
             }
           }
+          else
+          {
+            echo("I don't recognize $type, there is no $method\n");
+          }
         }
         if($slotInfos)
         {
@@ -254,6 +258,22 @@ class aImporter
    * @param SimpleXMLElement $slot
    * @return mixed
    */
+  protected function parseSlotAFile(SimpleXMLElement $slot, $title = null, &$counters = null)
+  {
+    $ids = $this->getMediaItems($slot);
+    $info = array('type' => 'aFile');
+    if(count($ids))
+    {
+      $info['mediaId'] = $ids[0];
+    }
+    return array($info);
+  }
+
+  /**
+   * DOCUMENT ME
+   * @param SimpleXMLElement $slot
+   * @return mixed
+   */
   protected function parseSlotAVideo(SimpleXMLElement $slot, $title = null, &$counters = null)
   {
     $results = array();
@@ -296,7 +316,22 @@ class aImporter
     $ids = array();
     foreach($slot->MediaItem as $item)
     {
-      $id = $this->findOrAddMediaItem($item['src']);
+      // TODO: refactor this to be more dynamic
+      $options = array();
+      if (isset($item['title']))
+      {
+        $options['title'] = $item['title'];
+      }
+      if (isset($item['description']))
+      {
+        $options['description'] = $item['description'];
+      }
+      if (isset($item['credit']))
+      {
+        $options['credit'] = $item['credit'];
+      }
+      
+      $id = $this->findOrAddMediaItem($item['src'], 'id', true, $options);
       if($id) 
       {
         $ids[] = $id;
@@ -372,9 +407,10 @@ class aImporter
    * @param mixed $src
    * @param mixed $returnType
    * @param mixed $tag
+   * @param array $options (todo: list available options)
    * @return mixed
    */
-  protected function findOrAddMediaItem($src, $returnType = 'id', $tag = true)
+  protected function findOrAddMediaItem($src, $returnType = 'id', $tag = true, $options = array())
   {
     $mediaId = null;
     $slug = null;
@@ -432,7 +468,6 @@ class aImporter
     } else
     {
       $mediaItem = new aMediaItem();
-      $mediaItem->setTitle($slug);
       $mediaItem->setSlug($slug);
       if ($extension === 'pdf')
       {
@@ -441,6 +476,25 @@ class aImporter
       {
         $mediaItem->setType('image');
       }
+      
+      // handles options
+      if (isset($options['title']))
+      {
+        $mediaItem->setTitle($options['title']);
+      } else {
+        $mediaItem->setTitle($slug);
+      }
+      
+      if (isset($options['description']))
+      {
+        $mediaItem->setDescription($options['description']);
+      }
+      
+      if (isset($options['credit']))
+      {
+        $mediaItem->setCredit($options['credit']);
+      }
+      
       $filename = $mediaItem->getOriginalPath($extension);
       
       if (file_exists($filename))

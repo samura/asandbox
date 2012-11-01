@@ -59,7 +59,7 @@ all:
     # Don't attempt to cache areas for logged-out users. Turning this
     # on offers a nice performance boost, but you have to be aware that
     # you might not see an edit take effect for up to 5 minutes if you check
-    # the edited page as a logged-out user. 
+    # the edited page as a logged-out user.
     #
     # The area cache is a recommended addition when you use the page cache.
     # It helps when many pages (such as blog index pages filtered many
@@ -92,7 +92,7 @@ all:
     default_on: true
     pretty_english_dates: true
 
-    # Allow the user to override the title tag via page settings when it is 
+    # Allow the user to override the title tag via page settings when it is
     # desirable to distinguish it from the navigation title for SEO purposes.
     # Sometimes a suitable title tag for SEO is too long to be the label
     # of a tab, etc.
@@ -269,7 +269,7 @@ all:
       aPhotoGrid: Photo Grid                # apostropheExtraSlotsPlugin Slot
       aPeople: People                       # apostrophePeoplePlugin Slot
 
-      
+
       # The following slot types are always enabled (meaning only that you can include them in
       # individual templates if you wish, so you still have control over what your end users do):
       # aRichText
@@ -409,7 +409,7 @@ all:
     use_bundled_layout: false
     embed_codes: true
     # jpeg_quality: 75 # default value is 75
-    
+
   aEvents:
     display_calendar: true
 
@@ -421,6 +421,10 @@ all:
     # excerpts_length: 50
 
   aBlog:
+    # Show categories as well as tags for each post.
+    # Categories that have no acceptable target page are
+    # shown without linking to them. 
+    showCategoriesForPosts: true
     # Comments, via Disqus. Be sure to set disqus_shortname too if you uncomment this
     # disqus_enabled: true
 
@@ -431,6 +435,11 @@ all:
 
     # If both are true, a new post initially allows comments until disabled
     allow_comments_initially: true
+
+    # Social sharing, via addthis.com. Register there and
+    # copy your profile id (pubid) here, then uncomment
+    # this line
+    #add_this: 'ra-xxxxxxxxxxxxxx'
 
     # Blog post templates allow you to change the structure of blog posts themselves to contain
     # more than just one Apostrophe area. Most people don't need this, so the sandbox now
@@ -465,6 +474,18 @@ all:
 
     # enable this if you are developing locally to see comments
     # disqus_developer: true
+
+    # Minimum and maximum posts in a blog slot.
+    # These are the defaults. Large #s can lead to
+    # poor performance
+    # slot_minimum_posts: 1
+    # slot_maximum_posts: 20
+
+    # Minimum and maximum events in a blog slot 
+    # These are the defaults. Large #s can lead to
+    # poor performance
+    # slot_minimum_events: 1
+    # slot_maximum_events: 20
 
   aFeedback:
     # Configure these email addresses (usually the same) if you want the feedback/bug report form
@@ -539,27 +560,25 @@ all:
 #  cli:
 #    host: cmstest14
 
-# In the production environment, we minify CSS and JS by default.
-# We'd like to gzip them too, but a lot of people don't have the
-# zlib extension in PHP. We encourage you to turn that on and see.
-# If you don't have the zlib extension have your host/sysadmin fix that
-
-# TODO: right now I have both turned on to demonstrate what this branch
-# is all about, but a_minify_gzip needs turning off before this becomes
-# the mainstream sandbox. We should always turn it on again when creating
-# our own client sites
-
 # WARNING: if you turn off all settings here for 'prod', COMMENT OUT the
 # 'prod' and 'a' lines too or you will shut off ALL of your Apostrophe settings
 
 prod:
+  aBlog:
+    # Prefix clearly distinguishing threads for this environment
+    # from threads created in dev and staging so the URLs of
+    # production posts never wind up pointing to dev or staging
+    # in the disqus admin
+    disqus_identifierPrefix: prod_
   a:
     # Combines css and js files. You want this, because we use a lot of them
     minify: true
-    # If you don't have the gzip extension in PHP or you don't have Apache configured
-    # to cope with gzipped files, just set this false. If you do have those things
-    # consider setting it true for even better front end performance
+
+    # Nice idea, but there are still some antivirus programs
+    # that don't support it ): You can use mod_deflate to get
+    # the same benefits via Apache
     minify_gzip: false
+
     # To add google analytics to a site, uncomment the following lines and add your analytics tracking code
     # Make sure you are including the googleAnalytics partial in your layout.php
     # googleAnalytics:
@@ -577,6 +596,9 @@ prod:
 # by the behavior of prod
 
 staging:
+  aBlog:
+    # Avoid conflict with production threads for the same post id
+    disqus_identifierPrefix: staging_
   a:
     # do_not_edit: true   # Quickly and easily display the 'Do Not Edit' message on staging sites after launch.
     minify: true
@@ -590,5 +612,8 @@ staging:
     # page_cache_enabled: true
 
 dev:
+  aBlog:
+    # Avoid conflict with production threads for the same post id
+    disqus_identifierPrefix: dev_
   a:
     js_debug: true

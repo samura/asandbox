@@ -77,7 +77,7 @@ function aConstructor()
 
     return function(output) {};
   }
-  
+
   this.log = this.setupLogger();
 
   // apostrophe.debug() -- displays any debug messages stored in the debugBuffer and empties the buffer
@@ -365,7 +365,7 @@ function aConstructor()
   */
   this.unobfuscateEmailInline = function() {
     var links = $('.a-obs-email');
-    if (links.length) 
+    if (links.length)
     {
       links.each(function(){
         $self = $(this);
@@ -762,7 +762,8 @@ function aConstructor()
         // Hiding all of the items, showing the first one, setting the position, and starting the timer
         slideshowItems.hide();
         $(slideshowItems[position]).show();
-        showItem(0, 0);
+        // This is redundant for the first image & leads to flicker
+        // showItem(0, 0);
         interval();
       }
 
@@ -926,7 +927,7 @@ function aConstructor()
       apostrophe.log('apostrophe.buttonSlot -- no button found');
     }
   };
-  
+
   this.afterAddingSlot = function(name)
   {
     $('#a-add-slot-form-' + name).hide();
@@ -1145,7 +1146,7 @@ function aConstructor()
       return false;
     });
   };
-  
+
 
   /**
     slotShowEditView
@@ -1239,7 +1240,7 @@ function aConstructor()
       $slot.children('.a-controls li.variant').fadeIn();
       $slot.children('.a-slot-content').children('.a-slot-form').hide();
       $slot.removeClass('a-editing').addClass('a-normal');
-      
+
       var $area = $slot.closest('.a-area');
       $area.removeClass('a-editing').addClass('a-normal');
     });
@@ -1565,6 +1566,10 @@ function aConstructor()
 
   this.mediaUpdatePreview = function()
   {
+    // Trigger a change event on the media selection list
+    var selectionList = $('#a-media-selection-list');
+    selectionList.trigger('change.aMedia');
+
     $('#a-media-selection-preview').load(apostrophe.selectOptions.updateMultiplePreviewUrl, function(){
       // the preview images are by default set to display:none
       $('#a-media-selection-preview li:first').addClass('current');
@@ -1593,6 +1598,7 @@ function aConstructor()
   this.mediaEnableSelect = function(options)
   {
     apostrophe.selectOptions = options;
+    var selectionList = $('#a-media-selection-list');
     // Binding it this way avoids a cascade of two click events when someone
     // clicks on one of the buttons hovering on this
 
@@ -1601,7 +1607,7 @@ function aConstructor()
       var p = $(this).parents('.a-media-selection-list-item');
       var id = p.data('id');
       $.get(options['removeUrl'], { id: id }, function(data) {
-        $('#a-media-selection-list').html(data);
+        selectionList.html(data);
         apostrophe.mediaDeselectItem(id);
         apostrophe.mediaUpdatePreview();
       });
@@ -1610,8 +1616,9 @@ function aConstructor()
 
     apostrophe.mediaItemsIndicateSelected(options);
 
-    $('.a-media-selected-item-overlay').fadeTo(0,.35); //cross-browser opacity for overlay
-    $('.a-media-selection-list-item').hover(function(){
+    selectionList.find('.a-media-selected-item-overlay').fadeTo(0,0.35); //cross-browser opacity for overlay
+
+    selectionList.find('.a-media-selection-list-item').hover(function(){
       $(this).addClass('over');
     },function(){
       $(this).removeClass('over');
@@ -1724,7 +1731,7 @@ function aConstructor()
             if (overlay)
             {
               // You can specify a particular overlay, but if you don't
-              // make an explicit choice .a-page-overlay is used 
+              // make an explicit choice .a-page-overlay is used
               if (overlay === true)
               {
                 overlay = '.a-page-overlay';
@@ -2113,6 +2120,18 @@ function aConstructor()
     });
   };
 
+  this.enableFilterDropdown = function(options)
+  {
+    var id = options.id;
+    $('#' + id).change(function() {
+      // Drop any page number when switching filters
+      document.location.href = apostrophe.addParameterToUrl(
+        apostrophe.addParameterToUrl(
+          document.location.href, options.name, $(this).val()),
+        'page', '');
+    });
+  };
+
   // Hide / Show the page overlay. Accepts true or false, and an optional call back
   // apostrophe.togglePageOverlay({ toggle: true | false , callback : f() });
   this.togglePageOverlay = function(options)
@@ -2171,7 +2190,7 @@ function aConstructor()
    * if there is one, parses that string as a URL in its own right, adds an
    * actual_url query string parameter to it, and then replaces the original
    * 'after' parameter in the original URL and returns this value. If you just want to
-   * add actual_url as a parameter of a URL and you don't need the extra step of adding 
+   * add actual_url as a parameter of a URL and you don't need the extra step of adding
    * it to yet another URL in a parameter called 'after', then you are probably
    * looking for apostrophe.injectActualUrlIntoUrl, below.
    */
@@ -2200,7 +2219,7 @@ function aConstructor()
   /**
    * This function provides a convenient way to place the actual URL of the current
    * page displayed in the web browser in a specified query string parameter of
-   * an existing URL. 
+   * an existing URL.
    */
   this.injectActualUrlIntoUrl = function(url, parameterName)
   {
@@ -2215,7 +2234,17 @@ function aConstructor()
   this.addParameterToUrl = function(url, name, value)
   {
     var urlParsed = apostrophe.parseUrl(url);
-    urlParsed.queryData[name] = value;
+    if (value.length) {
+      urlParsed.queryData[name] = value;
+    }
+    else
+    {
+      // Remove the parameter if the new value is blank
+      try {
+        delete urlParsed.queryData[name];
+      } catch (e) {
+      }
+    }
     urlParsed.query = $.param(urlParsed.queryData);
     // Careful, if we're the first to add any query parameters there will be no ? yet
     q = urlParsed.stem.indexOf('?');
@@ -2351,7 +2380,26 @@ function aConstructor()
     // Valid way to have links open up in a new browser window
     // Example: <a href="..." rel="external">Click Meh</a>
     $(target).find('a[rel="external"]').attr('target','_blank');
+
+    apostrophe.enableSlideToggle(target);
   };
+
+  // When a label with the a-slide-toggle class is clicked,
+  // toggle display of the selector specified by its
+  // data-toggle attribute. Also toggles the 'open' class,
+  // which in our standard CSS toggles between a right arrow
+  // and a downward-pointing arrow to indicate the
+  // toggle is open. This was refactored from aBlog.js
+
+  this.enableSlideToggle = function(target)
+  {
+    $(target).find('.a-slide-toggle').unbind('click.aSlideToggle').bind('click.aSlideToggle', function() {
+      var toggles = $($(this).attr('data-toggles'));
+      toggles.slideToggle();
+      $(this).toggleClass('open');
+      return false;
+    });
+  }
 
   this.onBeforeUnload = function()
   {
@@ -2382,7 +2430,7 @@ function aConstructor()
       }
     });
   }
-  
+
   // Breaks the url into a stem (everything before the query, inclusive of the ?), a query
   // (the encoded query string), and queryData (the query string parsed into an object)
   this.parseUrl = function(url)
@@ -2439,7 +2487,7 @@ function aConstructor()
       var aAudioPlayer = aAudioContainer.find('.a-audio-player');
       var aAudioInterface = aAudioContainer.find('.a-audio-player-interface');
 
-      // It's unfortunate, but the jquery ui playback works a lot better if it has a pixel value applied to the parent container. 
+      // It's unfortunate, but the jquery ui playback works a lot better if it has a pixel value applied to the parent container.
       // We don't need this for the player to look right, it just helps the playback feel better.
       aAudioContainer.unbind('setSize.audioPlayer').bind('setSize.audioPlayer', function(){
         var loader = aAudioContainer.find('.a-audio-loader'),
@@ -2915,8 +2963,8 @@ function aConstructor()
     /**
     *
     * setupPreviewToggle --
-    * Hide and show edit controls, saved in a cookie. 
-    * Jake and Tom had a hand in this. 
+    * Hide and show edit controls, saved in a cookie.
+    * Jake and Tom had a hand in this.
     */
   this.setupPreviewToggle = function(options)
   {
@@ -3191,8 +3239,8 @@ function aConstructor()
                     menu.parents().removeClass('ie-z-index-fix');
                     button.closest('.a-controls').removeClass('aActiveMenu');
                     menu.removeClass(classname);
-                    if (overlay) { 
-                      overlay.hide(); 
+                    if (overlay) {
+                      overlay.hide();
                     };
                     $(document).unbind('click.menuToggleClickHandler'); // Clear out click event
                     menu.trigger('afterClosed');
