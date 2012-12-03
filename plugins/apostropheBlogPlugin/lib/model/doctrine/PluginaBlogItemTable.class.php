@@ -324,13 +324,90 @@ class PluginaBlogItemTable extends Doctrine_Table
     // wind up losing authorship to the first person in the dropdown due to the validator!
     if ($candidateGroup && $sufficientGroup)
     {
-      $q->leftJoin('u.Permissions p WITH p.name = "cms_admin"')->leftJoin('u.Groups g')->leftJoin('g.Permissions gp WITH gp.name = "cms_admin" OR gp.name = ?')->addWhere('(g.name IN (?, ?)) OR (u.is_super_admin IS TRUE) OR gp.name = "cms_admin" OR p.name = "cms_admin"', array(sfConfig::get('app_a_group_editor_permission', 'editor'), $candidateGroup, $sufficientGroup));
+      $groupEditorPermission = sfConfig::get('app_a_group_editor_permission', 'editor');
+      $q->leftJoin('u.Permissions p WITH p.name = "cms_admin"')->leftJoin('u.Groups g')->leftJoin('g.Permissions gp WITH gp.name = "cms_admin" OR gp.name = ?', $groupEditorPermission)->addWhere('(g.name IN (?, ?)) OR (u.is_super_admin IS TRUE) OR (gp.name = "cms_admin" OR gp.name = ?) OR p.name = "cms_admin"', array($candidateGroup, $sufficientGroup, $groupEditorPermission));
     }
     else
     {
-      $q->leftJoin('u.Permissions p WITH p.name = "cms_admin"')->leftJoin('u.Groups g')->leftJoin('g.Permissions gp WITH gp.name = "cms_admin"')->addWhere('(u.is_super_admin IS TRUE) OR gp.name = "cms_admin" OR p.name = "cms_admin"');
+      $groupEditorPermission = sfConfig::get('app_a_group_editor_permission', 'editor');
+      $q->leftJoin('u.Permissions p WITH p.name = "cms_admin"')->leftJoin('u.Groups g')->leftJoin('g.Permissions gp WITH gp.name = "cms_admin" OR gp.name = ?', $groupEditorPermission)->addWhere('(u.is_super_admin IS TRUE) OR (gp.name = "cms_admin" OR gp.name = ?) OR p.name = "cms_admin"', $groupEditorPermission);
     }
     $q->orderBy('u.last_name asc, u.first_name asc, u.username asc');
     return $q;
+  }
+
+  /**
+   * Accepts a blog item, including an array-hydrated blog item,
+   * and returns a complete Symfony URL to link to it nicely
+   * on an appropriate engine page
+   */
+  public function getSymfonyUrl($aBlogItem)
+  {
+    $route = '@a_blog_post';
+    if ($aBlogItem['type'] === 'event')
+    {
+      $route = '@a_event_post';
+    }
+    list($year, $month, $day) = explode('-', date('Y-m-d', aDate::normalize($aBlogItem['published_at'])));
+    return $route . '?' . http_build_query(array('year' => $year, 'month' => $month, 'day' => $day, 'slug' => $aBlogItem['slug']));
+  }
+
+  /**
+   * Get current default template based on configuration
+   * or hardcoded defaults if no configuration. See also
+   * getTemplateChoices() and getTemplateInfos()
+   */
+  public function getDefaultTemplate()
+  {
+    $templates = $this->getTemplateInfos();
+    $template = null;
+    foreach ($templates as $key => $template)
+    {
+      $template = $key;
+      break;
+    }
+    return $template;
+  }
+
+  /**
+   * Get allowed template choices as an associative array ready
+   * for a form choice widget
+   */
+
+  public function getTemplateChoices()
+  {
+    $templates = $this->getTemplateInfos();
+    $templateChoices = array();
+    foreach ($templates as $key => $template)
+    {
+      $templateChoices[$key] = $template['name'];
+    }
+    return $templateChoices;
+  }
+
+  /**
+   * Get template information. You probably want getTemplateChoices()
+   * This cannot be named getTemplates because that is already
+   * significant in Doctrine_Table
+   */
+  public function getTemplateInfos()
+  {
+    $engine = ($this->_options['name'] === 'aBlogPost') ? 'aBlog' : 'aEvent';
+    $templates = sfConfig::get('app_' . $engine . '_templates', $this->getTemplateDefaults());
+    return $templates;
+  }
+
+  /**
+   * Hardcoded defaults. You probably want
+   * getDefaultTemplate or getTemplateInfos() or getTemplateChoices()
+   */
+  public function getTemplateDefaults()
+  {
+    return array(
+      'singleColumnTemplate' => array(
+        'name' => 'Single Column',
+        'areas' => array('blog-body')
+      )
+    );
   }
 }

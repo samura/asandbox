@@ -60,14 +60,8 @@
 
         <div class="a-form-row buttons">
           <?php echo a_submit_button('Save Images') ?>
-          <?php echo a_js_cancel_button('Cancel') ?>
         </div>
       </form>
   </div>
-
-  <ul class="a-ui a-controls">
-    <li><?php echo a_button(a_('Save images'), url_for("aMedia/selected"), array('save','big','a-select-save','a-show-busy'), 'a-save-media-selection') ?></li>
-    <li><?php echo a_button(a_('Cancel'), a_url('aMedia', 'selectCancel'), array('icon','a-cancel','big','alt','a-select-cancel')) ?></li>
-  </ul>
-
+  <?php echo a_button(a_('Cancel'), url_for("aMedia/selectCancel"), array(), 'a-save-media-selection') ?>
 </div>

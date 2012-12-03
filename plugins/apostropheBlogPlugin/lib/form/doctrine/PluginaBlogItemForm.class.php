@@ -40,17 +40,11 @@ abstract class PluginaBlogItemForm extends BaseaBlogItemForm
         new sfValidatorPass(array('required' => false)));
     }
 
-    $templates = sfConfig::get('app_'.$this->engine.'_templates', $this->getObject()->getTemplateDefaults());
-    $templateChoices = array();
-	  foreach ($templates as $key => $template)
-	  {
-	    $templateChoices[$key] = $template['name'];
-	  }
-
+    $templateChoices = $this->getObject()->getTable()->getTemplateChoices();
     $this->setWidget('template',
       new sfWidgetFormChoice(array('multiple' => false, 'choices' => $templateChoices)));
     $this->setValidator('template',
-      new sfValidatorChoice(array('required' => true, 'multiple' => false, 'choices' => array_flip($templateChoices))));
+      new sfValidatorChoice(array('required' => true, 'multiple' => false, 'choices' => array_keys($templateChoices))));
 
     if (count($templateChoices) <= 1)
     {
@@ -65,14 +59,13 @@ abstract class PluginaBlogItemForm extends BaseaBlogItemForm
 
     if ((!sfConfig::get('app_a_simple_permissions')) && ($user->hasCredential('admin') || $user->getGuardUser()->getId() == $this->getObject()->getAuthorId() ))
     {
-      $q = Doctrine::getTable('aBlogItem')->queryForAuthors();
-
-      $q->addWhere('u.id <> ?', $user->getGuardUser()->getId());
+      $choices = $this->getAuthorChoices();
+      unset($choices[$user->getGuardUser()->getId()]);
 
       $this->setWidget('editors_list',
-        new sfWidgetFormDoctrineChoice(array('multiple' => true, 'model' => 'sfGuardUser', 'query' => $q)));
+        new sfWidgetFormChoice(array('multiple' => true, 'choices' => $choices)));
       $this->setValidator('editors_list',
-        new sfValidatorDoctrineChoice(array('multiple' => true, 'model' => 'sfGuardUser', 'query' => $q, 'required' => false)));
+        new sfValidatorChoice(array('multiple' => true, 'choices' => array_keys($choices), 'required' => false)));
     }
     else
     {
@@ -81,11 +74,11 @@ abstract class PluginaBlogItemForm extends BaseaBlogItemForm
 
     if ($user->hasCredential('admin') || (sfConfig::get('app_aBlog_editors_can_change_author')))
     {
-      $q = Doctrine::getTable('aBlogItem')->queryForAuthors();
+      $choices = $this->getAuthorChoices();
       $this->setWidget('author_id',
-        new sfWidgetFormDoctrineChoice(array('model' => 'sfGuardUser', 'query' => $q)));
+        new sfWidgetFormChoice(array('choices' => $choices)));
       $this->setValidator('author_id',
-        new sfValidatorDoctrineChoice(array('model' => 'sfGuardUser', 'query' => $q, 'required' => false)));
+        new sfValidatorChoice(array('choices' => array_keys($choices), 'required' => false)));
     }
     else
     {
@@ -110,6 +103,28 @@ abstract class PluginaBlogItemForm extends BaseaBlogItemForm
     );
     
     $this->configurePublication();
+  }
+
+  protected $authorChoices;
+
+  // Very large performance win with large numbers of users:
+  // build the list of potential authors via array hydration
+  // and the new aTools::getUniqueName method, which can be
+  // overridden as needed
+   
+  public function getAuthorChoices()
+  {
+    if ($this->authorChoices) 
+    {
+      return $this->authorChoices;
+    }
+    $q = Doctrine::getTable('aBlogItem')->queryForAuthors();
+    $authors = $q->fetchArray();
+    $choices = array();
+    foreach ($authors as $author) {
+      $choices[$author['id']] = aTools::getUniqueName($author);
+    }
+    return $choices;
   }
 
   public function postValidator($validator, $values)
@@ -168,30 +183,36 @@ abstract class PluginaBlogItemForm extends BaseaBlogItemForm
       $aCategory->save();
       $link[] = $aCategory['id'];
     }
-    if(!is_array($this->values['categories_list']))
+    if (isset($this['categories_list']))
     {
-      $this->values['categories_list'] = array();
-    }
-    $reserved = $this->getAdminCategories();
-    foreach ($reserved as $category)
-    {
-      if (!in_array($category->id, $this->values['categories_list']))
+      if(!is_array($this->values['categories_list']))
       {
-        $this->values['categories_list'][] = $category->id;
+        $this->values['categories_list'] = array();
       }
-    }
-    foreach ($link as $id)
-    {
-      if (!in_array($id, $this->values['categories_list']))
+      $reserved = $this->getAdminCategories();
+      foreach ($reserved as $category)
       {
-        $this->values['categories_list'][] = $id;
+        if (!in_array($category->id, $this->values['categories_list']))
+        {
+          $this->values['categories_list'][] = $category->id;
+        }
+      }
+      foreach ($link as $id)
+      {
+        if (!in_array($id, $this->values['categories_list']))
+        {
+          $this->values['categories_list'][] = $id;
+        }
       }
     }
   }
 
   protected function doSave($con = null)
   {
-    $this->updateCategoriesList(isset($this->values['categories_list_add']) ? $this->values['categories_list_add'] : array());
+    if (isset($this['categories_list']))
+    {
+      $this->updateCategoriesList(isset($this->values['categories_list_add']) ? $this->values['categories_list_add'] : array());
+    }
     parent::doSave($con);
   }
   
@@ -235,6 +256,10 @@ abstract class PluginaBlogItemForm extends BaseaBlogItemForm
       {
         $object->status = 'draft';
       }
+      elseif ($values['publication'] === 'pending review')
+      {
+        $object->status = 'pending review';
+      }
     }
   }
   
@@ -264,6 +289,14 @@ abstract class PluginaBlogItemForm extends BaseaBlogItemForm
     {
       $choices = array('schedule' => 'Scheduled', 'publish' => 'Publish', 'draft' => 'Draft');
       $default = 'schedule';
+    } elseif (($o->status === 'pending review'))
+    {
+      $choices = array('nochange' => 'Pending Review',
+        'publish' => 'Published',
+        'draft' => 'Draft',
+        'schedule' => 'Schedule'
+      );
+      $default = 'pending review';
     }
     $this->setWidget('publication', new sfWidgetFormChoice(array('choices' => $choices, 'default' => $default)));
     $this->setValidator('publication', new sfValidatorChoice(array('choices' => array_keys($choices))));

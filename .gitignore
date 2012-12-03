@@ -6,3 +6,7 @@
 .ssh/
 .subversion/
 .svn/
+cache/
+log/
+web/uploads/
+config/databases.yml

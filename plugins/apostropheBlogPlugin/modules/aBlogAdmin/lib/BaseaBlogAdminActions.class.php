@@ -35,7 +35,10 @@ abstract class BaseaBlogAdminActions extends autoABlogAdminActions
       $this->a_blog_post->setTitle($this->form->getValue('title'));
       $event = new sfEvent($this->a_blog_post, 'a.postAdded', array());
       $this->dispatcher->notify($event);
+      $this->a_blog_post->setTemplate($this->a_blog_post->getTable()->getDefaultTemplate());
+      $this->a_blog_post->Page->blockSearchUpdates();
       $this->a_blog_post->save();
+      $this->a_blog_post->Page->flushSearchUpdates();
       $this->postUrl = $this->generateUrl('a_blog_admin_edit', $this->a_blog_post);
       return 'Success';
     }
@@ -51,7 +54,6 @@ abstract class BaseaBlogAdminActions extends autoABlogAdminActions
   
   public function executeUpdate(sfWebRequest $request)
   {
-    error_log('executeUpdate');
     $this->setABlogPostForUser();
     $this->form = $this->eventFormFor($this->a_blog_post);
 
@@ -63,7 +65,6 @@ abstract class BaseaBlogAdminActions extends autoABlogAdminActions
         // Buffer up all search update requests caused by the two save 
         // operations to prevent a major performance hit
         $this->form->getObject()->getPage()->blockSearchUpdates();
-        
         $this->a_blog_post = $this->form->save();
         
         // We do this here to avoid some nasty race conditions that crop up when
@@ -159,7 +160,7 @@ abstract class BaseaBlogAdminActions extends autoABlogAdminActions
     $this->dispatcher->filter($event, $form);
     $form = $event->getReturnValue();
     return $form;
-  }  
+  }
 
   public function executeEdit(sfWebRequest $request)
   {

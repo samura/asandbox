@@ -297,6 +297,14 @@ but why take chances with your data?
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8'));
     }
 
+    /**
+     * Clean up any legacy pages for which published_at is null
+     * even though the page is not archived. This shouldn't happen, 
+     * but we've come across a case. Don't mess with virtual pages.
+     */
+    $this->migrate->sql(array(
+      'UPDATE a_page SET published_at = updated_at WHERE published_at IS NULL AND (archived IS FALSE OR archived IS NULL) AND slug LIKE "/%"'));
+
     if (!$this->migrate->columnExists('a_page', 'published_at'))
     {
       $this->migrate->sql(array(
@@ -338,25 +346,6 @@ but why take chances with your data?
     aMigrate::migrateMediaMd5($this->migrate);
 
     // NO COLUMN OR TABLE ADDITIONS BELOW HERE - DOCTRINE API IN USE
-
-    $adminEnginePage = Doctrine::getTable('aPage')->createQuery('p')->where('p.admin IS TRUE AND p.engine = "aAdmin"')->fetchOne();
-    if (!$adminEnginePage)
-    {
-      $adminEnginePage = new aPage();
-      $root = aPageTable::retrieveBySlug('/');
-      $adminEnginePage->getNode()->insertAsFirstChildOf($root);
-    }
-    $adminEnginePage->slug = '/admin';
-    $adminEnginePage->engine = 'aAdmin';
-    $adminEnginePage->setAdmin(true);
-    $adminEnginePage->setPublishedAt(aDate::mysql());
-    $new = $adminEnginePage->isNew();
-    $adminEnginePage->save();
-    if ($new)
-    {
-      $adminEnginePage->setTitle('admin');
-    }
-    echo("Ensured there is an admin engine\n");
 
     $mediaEnginePage = Doctrine::getTable('aPage')->createQuery('p')->where('p.admin IS TRUE AND p.engine = "aMedia"')->fetchOne();
     if (!$mediaEnginePage)

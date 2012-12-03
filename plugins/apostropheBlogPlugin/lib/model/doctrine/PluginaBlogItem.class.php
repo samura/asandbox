@@ -87,6 +87,9 @@ abstract class PluginaBlogItem extends BaseaBlogItem
       // Create a virtual page for this item
       $page = new aPage();
     }
+    // Hold all search updates until we're through triggering
+    // saves of the virtual page
+    $page->blockSearchUpdates();
     // In virtual pages the engine column is used to figure out which engine should 
     // be asked for extra fields before search indexing of the page
     $page['engine'] = get_class($this);
@@ -119,6 +122,9 @@ abstract class PluginaBlogItem extends BaseaBlogItem
     // This prevents post preupdate from running after the next save
     $this->update = false;
     $this->save();
+    // Now that we're definitely done with the page we can
+    // let just one search index update happen
+    $page->flushSearchUpdates();
   }
 
   /**
@@ -484,12 +490,7 @@ EOM
 
   public function getTemplateDefaults()
   {
-    return array(
-      'singleColumnTemplate' => array(
-        'name' => 'Single Column',
-        'areas' => array('blog-body')
-      )
-    );
+    return $this->getTable()->getTemplateDefaults();
   }
 
   /**

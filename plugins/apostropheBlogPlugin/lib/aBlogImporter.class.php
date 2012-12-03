@@ -218,14 +218,24 @@ class aBlogImporter extends aImporter
     {
       $author_id = $real_author_id;
     }
-    
+   
+    $engine = ($type === 'post') ? 'aBlog' : 'aEvent';
+    $class = ($type === 'post') ? 'aBlogPost' : 'aEvent';
+    $table = Doctrine::getTable($class);
+    $template = $table->getDefaultTemplate();
+    if (!$template) 
+    {
+      echo("Can't determine default template, did you disable all blog or event templates in app.yml?\n");
+      exit(1);
+    }
+
     $params = array(
       "title" => (string) $post->title,
       "author_id" => $author_id,
       "slug_saved" => true,
       "status" => 'published',
       "allow_comments" => false,
-      "template" => "singleColumnTemplate",
+      "template" => $template,
       "published_at" => $this->parseDateTime($post['published_at']),
       "type" => $type,
       "slug" => $slug
@@ -235,16 +245,29 @@ class aBlogImporter extends aImporter
     {
       $params['allow_comments'] = sfConfig::get('app_aBlog_allow_comments_initially') ? 1 : 0;
     }
-
+    // On custom sites blog posts may also have locations
+    if (isset($post->location) && strlen($post->location))
+    {
+      $params['location'] = $post->location;
+    }
     if ($type === 'event')
     {
       $params = array_merge($params, array(
-        "location" => (string) $post->location,
         "start_date" => date('Y-m-d', strtotime($post['start_date'])),
-        "start_time" => date('H:i', strtotime($post['start_date'])),
         "end_date" => date('Y-m-d', strtotime($post['end_date'])),
-        "end_time" => date('H:i', strtotime($post['end_date']))
       ));
+      if (isset($post['all_day']) && (((string) $post['all_day']) === 'true'))
+      {
+        $params = array_merge($params, array('start_time' => null, 'end_time' => null));
+      }
+      else
+      {
+        // Not an all day event, consider time of day
+        $params = array_merge($params, array(
+          "end_time" => date('H:i', strtotime($post['end_date'])),
+          "start_time" => date('H:i', strtotime($post['start_date'])),
+        ));
+      }
     }
     if (isset($post['disqus_thread_identifier']))
     {

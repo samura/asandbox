@@ -19,7 +19,11 @@ class aImportWordpressTask extends sfBaseTask
       new sfCommandOption('clear', null, sfCommandOption::PARAMETER_NONE, 'Remove existing posts and/or events', null),
       new sfCommandOption('ignore-empty-title', null, sfCommandOption::PARAMETER_NONE, 'Ignore all posts and events with empty titles', null),
       new sfCommandOption('disqus', null, sfCommandOption::PARAMETER_NONE, 'Import existing Disqus threads', null),
-      new sfCommandOption('defaultUsername', null, sfCommandOption::PARAMETER_REQUIRED, 'Default author of posts', 'admin')
+      new sfCommandOption('defaultUsername', null, sfCommandOption::PARAMETER_REQUIRED, 'Default author of posts', 'admin'),
+      new sfCommandOption('category', null, sfCommandOption::PARAMETER_REQUIRED, 'Category to apply to ALL imported posts', 'admin'),
+      new sfCommandOption('categories-as-tags', null, sfCommandOption::PARAMETER_NONE, 'All categories found in the import are treated as tags', null),
+      new sfCommandOption('tag-to-entity', null, sfCommandOption::PARAMETER_NONE, 'Convert tags to entity relationships if an entity by that name exists (applied after categories-as-tags)', null),
+      new sfCommandOption('skip-confirmation', null, sfCommandOption::PARAMETER_NONE, 'Skip confirmation prompt', null)
       // add your own options here
     ));
 
@@ -59,6 +63,10 @@ EOM
     {
       $tags = array();
       $categories = array();
+      if ($options['category'])
+      {
+        $categories[] = $options['category'];
+      }
       $dcXml = $item->children('http://purl.org/dc/elements/1.1/');
       $wpXml = $item->children('http://wordpress.org/export/1.0/');
       if (!count($wpXml))
@@ -112,16 +120,45 @@ EOM
         }
         continue;
       }
+
+      if (isset($wpXml->postmeta)) 
+      {
+        foreach ($wpXml->postmeta as $postmeta)
+        {
+          $key = (string) $postmeta->meta_key;
+          $value = (string) $postmeta->meta_value;
+          if ($key === '_wp_geo_latitude')
+          {
+            $latitude = $value;
+          } elseif ($key === '_wp_geo_longitude')
+          {
+            $longitude = $value;
+          }
+        }
+      }
+
+      if (isset($latitude) && isset($longitude))
+      {
+        $location = $this->escape("$latitude, $longitude");
+      }
+
       foreach ($item->category as $category)
       {
-        $domain = (string) $category['domain'];
-        if ($domain === 'tag')
+        if ($options['categories-as-tags'])
         {
           $tags[] = (string) $category;
         }
-        elseif ($domain === 'category')
+        else
         {
-          $categories[] = (string) $category;
+          $domain = (string) $category['domain'];
+          if ($domain === 'tag')
+          {
+            $tags[] = (string) $category;
+          }
+          elseif ($domain === 'category')
+          {
+            $categories[] = (string) $category;
+          }
         }
       }
       // Look for a disqus thread using the standard Wordpress Disqus plugin's
@@ -137,13 +174,27 @@ EOM
   <post $disqus_thread_identifier_attribute published_at="$published_at" slug="$slug">
     <title>$title</title>
     <author>$author</author>
+
+EOM
+;
+      if (isset($location))
+      {
+        $out .= <<<EOM
+    <location>$location</location>
+
+EOM
+;
+      }
+      $out .= <<<EOM
     <categories>
     
 EOM
 ;
+      // Since WP category names are CDATA containing already-escaped entities,
+      // don't double-escape them
       foreach ($categories as $category)
       {
-        $out .= "      <category>" . $this->escape($category) . "</category>\n";
+        $out .= "      <category>" . $category . "</category>\n";
       }
       $out .= <<<EOM
     </categories>
@@ -151,9 +202,11 @@ EOM
     
 EOM
 ;
+      // Since WP category names are CDATA containing already-escaped entities,
+      // don't double-escape them
       foreach ($tags as $tag)
       {
-        $out .= "      <tag>" . $this->escape($tag) . "</tag>\n";
+        $out .= "      <tag>" . $tag . "</tag>\n";
       }
       $out .= <<<EOM
     </tags>
@@ -175,8 +228,8 @@ EOM
     $ourXml = aFiles::getTemporaryFilename();
     file_put_contents($ourXml, $out);
     $task = new aBlogImportTask($this->dispatcher, $this->formatter);
-    $boptions = array('posts' => $ourXml, 'env' => $options['env'], 'connection' => $options['connection'], 'clear' => $options['clear']);
-    if (isset($options['authors']))
+    $boptions = array('posts' => $ourXml, 'env' => $options['env'], 'connection' => $options['connection'], 'clear' => $options['clear'], 'tag-to-entity' => $options['tag-to-entity'], 'skip-confirmation' => $options['skip-confirmation']);
+    if (isset($options['authors'])) 
     {
       $boptions['authors'] = $options['authors'];
     }
@@ -190,7 +243,7 @@ EOM
   
   public function escape($s)
   {
-    // Yes, we really mean it when we double-encode here
+    // Yes, we really mean it if we double-encode here
     return htmlspecialchars((string) $s, ENT_COMPAT, 'UTF-8', true);
   }
 }
