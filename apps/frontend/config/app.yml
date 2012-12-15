@@ -599,7 +599,13 @@ staging:
     # Avoid conflict with production threads for the same post id
     disqus_identifierPrefix: staging_
   a:
-    # do_not_edit: true   # Quickly and easily display the 'Do Not Edit' message on staging sites after launch.
+    # Staging is a place to test the site, NOT to write final production
+    # content. So warn users not to make "keeper" edits on staging. At
+    # P'unk Avenue we always create a production server for the client
+    # before permanent edits begin, and it's important that users not
+    # edit in the wrong place.
+    do_not_edit: true   
+
     minify: true
     # If you don't have the gzip extension in PHP or you don't have Apache configured
     # to cope with gzipped files, just set this false

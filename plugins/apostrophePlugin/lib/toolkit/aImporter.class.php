@@ -294,7 +294,10 @@ class aImporter
           'tags' => isset($result['serviceInfo']['tags']) ? preg_split('/\s*,\s*/', $result['serviceInfo']['tags']) : array(),
           'service_url' => isset($result['serviceInfo']['url']) ? $result['serviceInfo']['url'] : null);
           $mediaId = $this->findOrAddVideo($info);
-          $results[] = array('type' => 'aVideo', 'mediaId' => $mediaId);
+          if ($mediaId)
+          {
+            $results[] = array('type' => 'aVideo', 'mediaId' => $mediaId);
+          }
         $n++;
         $counters['aVideo']['n'] = $n;
       }
@@ -332,7 +335,7 @@ class aImporter
       }
       
       $id = $this->findOrAddMediaItem($item['src'], 'id', true, $options);
-      if($id) 
+      if ($id) 
       {
         $ids[] = $id;
       }
@@ -352,16 +355,21 @@ class aImporter
     $html = $slot->value->__toString();
     // Cases: wordpress 'caption' element (typically enclosing an image),
     // link to an image, plain ol' image, and object and iframe embeds
-    $segments = aString::splitAndCaptureAtEarliestMatch($html, array('/\[caption.*?\].*?\[\/caption\]/', '/\<a href=\"[^\"]+\"[^\>]*>\s*(?:\<br \/\>|&nbsp;|\s)*\<img.*?src="[^\"]+[^\>]*\>(?:\<br \/\>|&nbsp;|\s)*\<\/a\>/is', '/\<img.*?src="[^\"]+".*?\>/is', '/\<object.*?\>.*?\<\/object\>/is', '/\<iframe.*?\>.*?\<\/iframe\>/is'));
+    $segments = aString::splitAndCaptureAtEarliestMatch($html, array('/\[caption.*?\].*?\[\/caption\]/is', '/\<a href=\"[^\"]+\"[^\>]*>\s*(?:\<br \/\>|&nbsp;|\s)*\<img.*?src="[^\"]+[^\>]*\>(?:\<br \/\>|&nbsp;|\s)*\<\/a\>/is', '/\<img.*?src="[^\"]+".*?\>/is', '/\<object.*?\>.*?\<\/object\>/is', '/\<iframe.*?\>.*?\<\/iframe\>/is'));
     // Empty bodies happen
     $slotInfos = array();
     foreach ($segments as $segment)
     {
       $mediaItem = null;
       $caption = false;
+      $creditUrl = false;
       if (preg_match('/caption="(.*?)"/', $segment, $matches))
       {
         $caption = aHtml::toPlaintext($matches[1]);
+        if (preg_match('/href="(.*?)"/', $segment, $matches))
+        {
+          $creditUrl = aHtml::toPlaintext($matches[1]);
+        }
       }
       if (preg_match('/\<audio.*?\>.*?\<\/audio\>|\<video.*?\>.*?\<\/video\>|\<script.*?\>.*?\<\/script\>|\<object.*?\>.*?\<\/object\>|\<iframe.*?\>.*?\<\/iframe\>/is', $segment))
       {
@@ -378,7 +386,10 @@ class aImporter
             'tags' => isset($result['serviceInfo']['tags']) ? preg_split('/\s*,\s*/', $result['serviceInfo']['tags']) : array(),
             'service_url' => isset($result['serviceInfo']['url']) ? $result['serviceInfo']['url'] : null);
             $mediaId = $this->findOrAddVideo($info);
-            $slotInfos[] = array('type' => 'aVideo', 'mediaId' => $mediaId);
+            if ($mediaId)
+            {
+              $slotInfos[] = array('type' => 'aVideo', 'mediaId' => $mediaId);
+            }
           $n++;
         }
       } elseif (preg_match('/<img.*?src="(.*?)".*?>/is', $segment, $matches))
@@ -389,7 +400,8 @@ class aImporter
         // A link means we should make a button slot - unless the link
         // is to an image (typically a higher quality version of the
         // same thing). If the link is to an image, use it as the
-        // src and don't make a button slot.
+        // src and don't make a button slot. Also, do not treat it as a
+        // credit_url on sites that have those
         if (preg_match('/href="(.*?)"/', $segment, $matches))
         {
           $url = $matches[1];
@@ -397,10 +409,15 @@ class aImporter
           {
             $src = $url;
             $url = null;
+            $creditUrl = null;
           }
         }
-        $mediaId = $this->findOrAddMediaItem($src, 'id', true, array('title' => isset($caption) ? $caption : null));
-        if (!is_null($mediaId))
+        // It's ambiguous whether the caption is a title or a credit. Some of
+        // our clients have contractual obligations to show a credit, so when
+        // importing their legacy blogs, we can't be too careful. Import it as
+        // both title and credit. -Tom
+        $mediaId = $this->findOrAddMediaItem($src, 'id', true, array('title' => isset($caption) ? $caption : null, 'credit' => $caption ? $caption : '', 'credit_url' => $creditUrl ? $creditUrl : null));
+        if ($mediaId)
         {
           $slotInfo = array('type' => 'aImage', 'mediaId' => $mediaId, 'value' => array());
           if (isset($url))
@@ -484,12 +501,34 @@ class aImporter
     {
       $mediaItem = new aMediaItem();
       $mediaItem->setSlug($slug);
-      if ($extension === 'pdf')
+
+      // Locate the appropriate type for this file extension.
+      // This is much more thorough than it was, although ideally
+      // we'd demand the mime type from the source server or
+      // look at an apache mime.types file here
+      $types = aMediaTools::getOption('types');
+      $found = false;
+      $testExtension = strtolower($extension);
+      // In principle there could be a lot of formats that have two
+      // extensions, but this is the only one we tend to care about
+      if ($testExtension === 'jpeg')
       {
-        $mediaItem->setType('pdf');
-      } else
+        $testExtension = 'jpg';
+      }
+      foreach ($types as $type => $info)
       {
-        $mediaItem->setType('image');
+        if (in_array($testExtension, $info['extensions']))
+        {
+          $mediaItem->setType($type);
+          $mediaItem->setFormat($testExtension);
+          $found = true;
+          break;
+        }
+      }
+      if (!$found)
+      {
+        echo("WARNING: unrecognized extension for $src cannot import\n");
+        return false;
       }
       
       // handles options
@@ -498,6 +537,19 @@ class aImporter
         $mediaItem->setTitle($options['title']);
       } else {
         $mediaItem->setTitle($slug);
+      }
+
+      if (isset($options['credit']))
+      {
+        $mediaItem->setCredit($options['credit']);
+      }
+
+      // WARNING: this field does not exist in the default plugin's schema.
+      // If you need it, make sure you add it to the schema at project level.
+      // Otherwise just don't use one
+      if (isset($options['credit_url']))
+      {
+        $mediaItem->setCreditUrl($options['credit_url']);
       }
       
       if (isset($options['description']))
@@ -558,7 +610,8 @@ class aImporter
     if ($returnType === 'path')
     {
       return $path;
-    } else
+    } 
+    else
     {
       return $mediaId;
     }
@@ -606,9 +659,13 @@ class aImporter
       }
       $mediaItem->setSlug($slug);
       $mediaItem->setType('video');
+      $service = null;
       if ($mediaItem->service_url)
       {
         $service = aMediaTools::getEmbedService($mediaItem->service_url);
+      }
+      if ($service)
+      {
         $id = $service->getIdFromUrl($mediaItem->service_url);
         if ($service->supports('thumbnail'))
         {

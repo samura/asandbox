@@ -1,6 +1,8 @@
 <?php
 
-require dirname(__FILE__) . '/phpviddler/phpviddler.php';/**
+require dirname(__FILE__) . '/phpviddler/phpviddler.php';
+
+/**
  * @package    apostrophePlugin
  * @subpackage    embedService
  * @author     P'unk Avenue <apostrophe@punkave.com>
@@ -167,7 +169,7 @@ class aViddler extends aEmbedService
     $info['description'] = (string) $result['description'];
     $info['credit'] = (string) $result['author'];
     $tags = array();
-    if (isset($result['tags']))
+    if (isset($result['tags']) && is_array($result['tags']))
     {
       foreach ($result['tags'] as $tag)
       {
