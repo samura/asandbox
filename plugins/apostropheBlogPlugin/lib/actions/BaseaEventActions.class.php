@@ -137,11 +137,9 @@ EOM
       
   public function getFeed()
   {
-    $this->articles = $this->pager->getResults();
-    
     $title = sfConfig::get('app_aEvent_feed_title', $this->page->getTitle());
     $this->feed = sfFeedPeer::createFromObjects(
-      $this->articles,
+      $this->results,
       array(
         'format'      => 'rss',
         'title'       => $title,
@@ -190,7 +188,7 @@ EOM
 		$aEvents = $query->execute(array(), Doctrine::HYDRATE_ARRAY);
 
 		$calendar['events'] = new sfEventCalendar('month', $date);
-		
+
 		foreach ($aEvents as $aEvent)
 		{
 			$calendar['events']->addEvent($aEvent['start_date'], array('event' => $aEvent));

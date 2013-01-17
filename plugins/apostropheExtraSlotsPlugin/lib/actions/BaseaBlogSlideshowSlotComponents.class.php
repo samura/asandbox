@@ -15,10 +15,13 @@ class BaseaBlogSlideshowSlotComponents extends BaseaBlogSlotComponents
     $this->options['flexHeight'] = $this->getOption('flexHeight');
     $this->options['interval'] = $this->getOption('interval', 0) + 0;
     $this->options['arrows'] = $this->getOption('arrows', true);
+    $this->options['uncropped'] = $this->getOption('uncropped', false);
     $this->options['transition'] = ($this->options['height']) ? $this->getOption('transition', 'normal') : 'normal-forced';
     $this->options['duration'] = $this->getOption('duration', 300) + 0;
     $this->options['position'] = $this->getOption('position', false);
     $this->options['random'] = $this->getOption('random', false);
+    $this->options['clickToRead'] = $this->getOption('clickToRead', true);
+
     // idSuffix works with the Blog Slot slideshows
     // Creates unique ids for the same slideshows if they show up in separate slots on a single page.
     $this->options['idSuffix'] = $this->getOption('idSuffix', false);
@@ -27,10 +30,13 @@ class BaseaBlogSlideshowSlotComponents extends BaseaBlogSlotComponents
 
   public function executeNormalView()
   {
-		// execute the normalView of the normal blog slot
+    // We need to do this first or it has no bearing on anything executeNormalView does
+
+    // Add the options we need for the slideshow
+    $this->setupSlideshowOptions();
+
+		// Execute the normalView of the normal blog slot
 		parent::executeNormalView();
-		// and add the options we need for the slideshow
-		$this->setupSlideshowOptions();
   }
 
 }

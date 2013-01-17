@@ -1853,7 +1853,10 @@ abstract class PluginaPage extends BaseaPage
         // Nulls don't store well in Lucene
         'engine_stored' => strlen($engine) ? $engine : '',
         'info_stored' => serialize($info)),
-      'boosts' => array('tags' => 2.0, 'metadescription' => 1.2, 'title' => 3.0),
+      // We've learned over time that titles are terrifically important and
+      // in a corpus of many very long articles their weight tends to be lost.
+      // Give tags and handwritten meta descriptions a bigger boost too
+      'boosts' => array('tags' => 20.0, 'metadescription' => 10.0, 'title' => 100.0),
       'keywords' => array(
         // We index the publication timestamp as a string consisting solely of digits. That allows
         // us to use Zend Lucene's TO construct to look at items published from now until eternity
@@ -2155,9 +2158,9 @@ abstract class PluginaPage extends BaseaPage
    * @param int $limit
    * @return Array aMediaItem
    */
-  public function getMediaForArea($area, $type = 'image', $limit = 5)
+  public function getMediaForArea($area, $type = 'image', $limit = 5, $options = array())
   {
-    return $this->getMediaForAreas(array($area), $type, $limit);
+    return $this->getMediaForAreas(array($area), $type, $limit, $options);
   }
 
   /**
@@ -2167,7 +2170,7 @@ abstract class PluginaPage extends BaseaPage
    * @param  $limit Limit the number of mediaItems returned
    * @return array aMediaItems
    */
-  public function getMediaForAreas($areas, $type = 'image', $limit = 5)
+  public function getMediaForAreas($areas, $type = 'image', $limit = 5, $options = array())
   {
     $aMediaItems = array();
     foreach($areas as $area)
@@ -2182,11 +2185,21 @@ abstract class PluginaPage extends BaseaPage
             $aMediaItems[] = $aMediaItem;
             if ($limit === 0) 
             {
-              return $aMediaItems;
+              return $this->afterGetMediaForAreas($aMediaItems, $options);
             }
           }
         }
       }
+    }
+    return $this->afterGetMediaForAreas($aMediaItems, $options);
+  }
+
+  public function afterGetMediaForAreas($aMediaItems, $options)
+  {
+    $uncropped = isset($options['uncropped']) ? $options['uncropped'] : null;
+    if ($uncropped)
+    {
+      $aMediaItems = Doctrine::getTable('aMediaItem')->getCropOriginals($aMediaItems);
     }
     return $aMediaItems;
   }

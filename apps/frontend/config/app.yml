@@ -420,6 +420,12 @@ all:
     # excerpts_length: 50
 
   aBlog:
+    # A major performance win, as long as your templates 
+    # use $results rather than calling $pager->getResults(). For
+    # bc reasons we don't force this on old projects, so turn it
+    # on explicitly for new projects
+    arrayPager: true
+
     # Show categories as well as tags for each post.
     # Categories that have no acceptable target page are
     # shown without linking to them. 
