@@ -7,6 +7,9 @@ all:
     routes_register: false
 
   a:
+    # This is the default: new child pages go to the top of the list of child pages
+    new_pages_top: true
+
     # CK Editor is the default editor in Apostrophe
     editor: ck
 

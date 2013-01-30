@@ -25,6 +25,7 @@
  * @property Doctrine_Collection $aSlotMediaItem
  * @property Doctrine_Collection $Categories
  * @property Doctrine_Collection $aMediaItemToCategory
+ * @property Doctrine_Collection $aPoll
  * @property Doctrine_Collection $aMediaItemToASearchDocument
  * @property Doctrine_Collection $aPerson
  * 
@@ -48,6 +49,7 @@
  * @method Doctrine_Collection getASlotMediaItem()              Returns the current record's "aSlotMediaItem" collection
  * @method Doctrine_Collection getCategories()                  Returns the current record's "Categories" collection
  * @method Doctrine_Collection getAMediaItemToCategory()        Returns the current record's "aMediaItemToCategory" collection
+ * @method Doctrine_Collection getAPoll()                       Returns the current record's "aPoll" collection
  * @method Doctrine_Collection getAMediaItemToASearchDocument() Returns the current record's "aMediaItemToASearchDocument" collection
  * @method Doctrine_Collection getAPerson()                     Returns the current record's "aPerson" collection
  * @method aMediaItem          setId()                          Sets the current record's "id" value
@@ -70,10 +72,11 @@
  * @method aMediaItem          setASlotMediaItem()              Sets the current record's "aSlotMediaItem" collection
  * @method aMediaItem          setCategories()                  Sets the current record's "Categories" collection
  * @method aMediaItem          setAMediaItemToCategory()        Sets the current record's "aMediaItemToCategory" collection
+ * @method aMediaItem          setAPoll()                       Sets the current record's "aPoll" collection
  * @method aMediaItem          setAMediaItemToASearchDocument() Sets the current record's "aMediaItemToASearchDocument" collection
  * @method aMediaItem          setAPerson()                     Sets the current record's "aPerson" collection
  * 
- * @package    symfony
+ * @package    asandbox
  * @subpackage model
  * @author     Your name here
  * @version    SVN: $Id: Builder.php 7490 2010-03-29 19:53:27Z jwage $
@@ -187,6 +190,10 @@ abstract class BaseaMediaItem extends sfDoctrineRecord
              'foreign' => 'category_id'));
 
         $this->hasMany('aMediaItemToCategory', array(
+             'local' => 'id',
+             'foreign' => 'media_item_id'));
+
+        $this->hasMany('aPoll', array(
              'local' => 'id',
              'foreign' => 'media_item_id'));
 
