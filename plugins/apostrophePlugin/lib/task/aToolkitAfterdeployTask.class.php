@@ -60,8 +60,8 @@ EOF;
     {
       $this->attemptTask('doctrine:migrate', array(), array('env' => $arguments['env']));
       $this->attemptTask('apostrophe:migrate', array(), array('force' => false, 'env' => $arguments['env']));
+      $this->attemptTask('cc', array(), array('env' => $arguments['env']));
     }
-    $this->attemptTask('cc', array(), array('env' => $arguments['env']));
     $this->attemptTask('apostrophe:live', array(), array());
   }
 

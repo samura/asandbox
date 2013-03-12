@@ -7,6 +7,10 @@ all:
     routes_register: false
 
   a:
+    # Raw HTML slots always preview as source code when rendered in
+    # an AJAX context. This ensures document.write() calls cannot
+    # break the page but requires the user refresh after save
+    rawHtmlPreviewsAsSource: true
     # This is the default: new child pages go to the top of the list of child pages
     new_pages_top: true
 
