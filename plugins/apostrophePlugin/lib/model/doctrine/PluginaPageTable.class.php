@@ -323,6 +323,28 @@ class PluginaPageTable extends Doctrine_Table
   }
 
   /**
+   * Prep to get all slots of a page fetched via getParent or getChildren
+   * @param mixed $slot
+   */
+  static public function treeSlotsOn()
+  {
+    $query = aPageTable::queryWithSlots();
+    aPageTable::$treeObject = Doctrine::getTable('aPage')->getTree();
+    // I'm not crazy about how I have to set the base query and then
+    // reset it, instead of simply passing it to getChildren. A
+    // Doctrine oddity
+    aPageTable::$treeObject->setBaseQuery($query);
+  }
+
+  /**
+   * DOCUMENT ME
+   */
+  static public function treeSlotsOff()
+  {
+    aPageTable::$treeObject->resetBaseQuery();
+  }
+
+  /**
    * DOCUMENT ME
    * @return mixed
    */
@@ -1094,7 +1116,7 @@ class PluginaPageTable extends Doctrine_Table
     $id = (int) $options['id'];
     if (!isset(aPageTable::$pagesInfo[$id]))
     {
-      aPageTable::$pagesInfo[$id] = aPageTable::getPagesInfo(array_merge($options, array('where' => '(id = ' . $id . ')')));
+      aPageTable::$pagesInfo[$id] = aPageTable::getPagesInfo(array_merge($options, array('where' => '(p.id = ' . $id . ')')));
     }
     if (count(aPageTable::$pagesInfo[$id]))
     {
@@ -1188,7 +1210,7 @@ class PluginaPageTable extends Doctrine_Table
    * Accepts array('where' => [where clause]) or array('ids' => array(1, 5, 17...))
    * 
    * Returns results the current user is permitted to see. You can override this by passing the
-   * 'ignorePermissions' => true option, or by specifying ALL of the following:
+   * 'ignore_permissions' => true option, or by specifying ALL of the following:
    * 'user_id', 'has_view_locked_permission', 'group_ids', 'has_cms_admin_permission'
    * 
    * You can override the user's culture by specifying 'culture'
@@ -1370,7 +1392,9 @@ class PluginaPageTable extends Doctrine_Table
    * Mirrors the specified object to a virtual page for
    * the purpose of including it in search results. For
    * best results call this from your object's postSave() event
-   * handler. Calls your object's getSearchUrl() method to get
+   * handler.
+   *
+   * This method calls your object's getSearchUrl() method to get
    * a Symfony URL to link search results to; if the result is
    * null, the object is not mirrored for search. The returned
    * URL should not rely on editable slugs or any other
@@ -1378,9 +1402,9 @@ class PluginaPageTable extends Doctrine_Table
    * object forever. If you want nice URLs, point to an action
    * that redirects to a nicer URL.
    *
-   * Call your object's getSearchTitle() and getSearchText() methods
-   * to get the title and summary text to be included in the
-   * search index and displayed in the search results.
+   * This method calls your object's getSearchTitle() and
+   * getSearchText() methods to get the title and summary text to be
+   * included in the search index and displayed in the search results.
    *
    * The summary is automatically abbreviated in results exactly
    * as it would be for any normal page, so you can include
@@ -1410,7 +1434,7 @@ class PluginaPageTable extends Doctrine_Table
 
     $page = $this->retrieveBySlug($url);
     $new = false;
-    if (!$page) 
+    if (!$page)
     {
       $new = true;
       $page = new aPage();
@@ -1422,15 +1446,31 @@ class PluginaPageTable extends Doctrine_Table
     }
     else
     {
+      if (is_null($page->getPublishedAt()))
+      {
+        // People often switch to this after trying to wing it with
+        // virtual pages that are not published. Help them out when
+        // they transition
+        $page->setPublishedAt(date('Y-m-d'));
+        $page->save();
+      }
       $page->blockSearchUpdates();
     }
     $page->setTitle($object->getSearchTitle());
     $slot = $page->createSlot('aText');
     $slot->value = $object->getSearchText();
     $slot->save();
-    $page->newAreaVersion('body', 'update', 
+    if (method_exists($object, 'getSearchAreaName'))
+    {
+      $areaName = $object->getSearchAreaName();
+    } else {
+      // Not the greatest choice, because people find other uses
+      // for this name, but it's a bc issue
+      $areaName = 'body';
+    }
+    $page->newAreaVersion($areaName, 'update',
       array(
-        'permid' => 1, 
+        'permid' => 1,
         'slot' => $slot));
     $page->flushSearchUpdates();
   }
